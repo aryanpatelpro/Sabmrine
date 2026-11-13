@@ -1,0 +1,30 @@
+name: Quick test (6 frames)
+on:
+  workflow_dispatch:
+    inputs:
+      frames:
+        description: "Frame range to render (0-1951)"
+        default: "60-65"
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: unzip -q project.zip -d work
+      - name: Install
+        working-directory: work
+        run: npm ci --no-audit --no-fund
+      - name: Render test frames
+        working-directory: work
+        run: |
+          START=$(date +%s)
+          npx remotion render src/index.ts U1206Short test.mp4 --frames=${{ github.event.inputs.frames }} --codec h264 --crf 16 --gl=swiftshader --concurrency=2 --timeout=600000
+          echo "Render took $(( $(date +%s) - START )) seconds on $(nproc) cores" >> $GITHUB_STEP_SUMMARY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: test-render
+          path: work/test.mp4
